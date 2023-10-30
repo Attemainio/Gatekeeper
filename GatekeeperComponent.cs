@@ -74,6 +74,8 @@ namespace Gatekeeper
         {
         }
 
+        public override void CreateAttributes() => this.m_attributes = (IGH_Attributes)new GH_GatekeeperAttributes(this);
+
 
         /// <summary>
         /// Provides an Icon for the component.
