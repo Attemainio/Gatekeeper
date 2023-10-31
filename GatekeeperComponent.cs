@@ -7,6 +7,13 @@ namespace Gatekeeper
 {
     public class GH_GatekeeperComponent : GH_Component
     {
+        #region Fields
+        public static bool buttonTriggered = false;
+        private bool _pass = false;
+        private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo>();
+        #endregion Fields
+
+        #region Constructor
         /// <summary>
         /// Initializes a new instance of the GH_DataDamComponent class.
         /// </summary>
@@ -20,7 +27,9 @@ namespace Gatekeeper
               "Params", "Util")
         {
         }
+        #endregion Constructor
 
+        #region Methods
         /// <summary>
         /// Registers all the input parameters for this component.
         /// </summary>
@@ -38,9 +47,6 @@ namespace Gatekeeper
             pManager.AddGenericParameter("Data", "D", "Data", GH_ParamAccess.item);
         }
 
-        private bool _pass = false;
-        private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo>();
-
         /// <summary>
         /// This is the method that actually does the work.
         /// </summary>
@@ -50,8 +56,9 @@ namespace Gatekeeper
             bool compute = false;
             DA.GetData(1, ref compute);
 
-            if (compute)
+            if (compute || buttonTriggered)
             {
+                buttonTriggered = false;
                 DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
 
                 if (!_pass)
@@ -70,24 +77,19 @@ namespace Gatekeeper
             _pass = compute;
         }
 
-        protected override void ExpireDownStreamObjects()
-        {
-        }
+        protected override void ExpireDownStreamObjects() { }
 
         public override void CreateAttributes() => this.m_attributes = (IGH_Attributes)new GH_GatekeeperAttributes(this);
-
 
         /// <summary>
         /// Provides an Icon for the component.
         /// </summary>
-        protected override System.Drawing.Bitmap Icon => Gatekeeper.Properties.Resources.GH_Gatekeeper.ToBitmap();
+        protected override System.Drawing.Bitmap Icon => Properties.Resources.GH_Gatekeeper.ToBitmap();
 
         /// <summary>
         /// Gets the unique ID for this component. Do not change this ID after release.
         /// </summary>
-        public override Guid ComponentGuid
-        {
-            get { return new Guid("F798609B-3A6A-4736-BD18-E59BF1F95D65"); }
-        }
+        public override Guid ComponentGuid => new Guid("F798609B-3A6A-4736-BD18-E59BF1F95D65");
+        #endregion Methods
     }
 }

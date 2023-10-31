@@ -81,8 +81,8 @@ namespace Gatekeeper
         {
             if (e.Button == MouseButtons.Left && ((RectangleF)this.iconButtonBounds).Contains(e.CanvasLocation))
             {
-                // Pass data AFTER the click.
-                Rhino.UI.Dialogs.ShowMessage("Add code to pass data when user clicks me.", "I was clicked!", Rhino.UI.ShowMessageButton.OK, Rhino.UI.ShowMessageIcon.Exclamation);
+                GH_GatekeeperComponent.buttonTriggered = true;
+                this.Owner.ExpireSolution(true);
                 return GH_ObjectResponse.Handled;
             }
             else
