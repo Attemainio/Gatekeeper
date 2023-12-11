@@ -38,8 +38,7 @@ namespace Gatekeeper
             pManager.AddGenericParameter("Data", "D", "Data", GH_ParamAccess.item);
         }
 
-        private bool _pass = false;
-        private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo>();
+        private bool _shouldExpire = false;
 
         /// <summary>
         /// This is the method that actually does the work.
@@ -50,30 +49,33 @@ namespace Gatekeeper
             bool compute = false;
             DA.GetData(1, ref compute);
 
+            if (_shouldExpire)
+            {
+                _shouldExpire = false;
+
+                DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
+                DA.SetDataList(0, dataTree.AllData(true));
+
+                return;
+            }
+
             if (compute)
             {
-                DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
-
-                if (!_pass)
-                    _data = dataTree.ShallowDuplicate();
-
-                DA.SetDataTree(0, dataTree);
-
-                foreach (IGH_Param recipient in Params.Output[0].Recipients)
-                    recipient.ExpireSolution(recompute: true);
+                _shouldExpire = true;
+                ExpireSolution(true);
             }
             else
             {
-                DA.SetDataTree(0, _data);
+                DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
+                DA.SetDataList(0, dataTree.AllData(true));
             }
-
-            _pass = compute;
         }
 
         protected override void ExpireDownStreamObjects()
         {
+            if (_shouldExpire)
+                base.ExpireDownStreamObjects();
         }
-
 
         /// <summary>
         /// Provides an Icon for the component.
