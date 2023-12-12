@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
@@ -27,7 +28,7 @@ namespace Gatekeeper
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddGenericParameter("Data", "D", "Data", GH_ParamAccess.tree);
-            pManager.AddBooleanParameter("Pass", "P", "True, if data is passed forward", GH_ParamAccess.item, false);
+            pManager.AddBooleanParameter("Pass", "P", "True, if data is passed forward. Only one input here!", GH_ParamAccess.item, false);
         }
 
         /// <summary>
@@ -38,7 +39,6 @@ namespace Gatekeeper
             pManager.AddGenericParameter("Data", "D", "Data", GH_ParamAccess.item);
         }
 
-        private bool _shouldExpire = false;
         private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo> ();
         private bool _pass = false;
 
@@ -53,34 +53,28 @@ namespace Gatekeeper
 
             DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
 
-            if (_shouldExpire)
-            {
-                _shouldExpire = false;
-                DA.SetDataTree(0, dataTree);
-                return;
-            }
-
             if (!_pass && compute)
                 _data = dataTree.ShallowDuplicate();
 
-            if (compute)
-            {
-                _shouldExpire = true;
-                DA.SetDataTree(0, new GH_Structure<IGH_Goo> { });
-                this.ExpireSolution(true);
-            }
-            else
-            {
-                DA.SetDataTree(0, _data);
-            }
+            DA.SetDataTree(0, compute ? dataTree : _data);
 
             _pass = compute;
         }
 
         protected override void ExpireDownStreamObjects()
         {
-            if (_shouldExpire)
-                base.ExpireDownStreamObjects();
+            var sources = Params.Input[1].Sources;
+
+            if (sources != null && sources.Count > 0)
+            {
+                var source = sources[0];
+                source.CollectData();
+
+                IGH_Structure data = source.VolatileData;
+
+                if (!data.IsEmpty && ((GH_Boolean)data.get_Branch(0)[0]).Value)
+                    base.ExpireDownStreamObjects();
+            }
         }
 
         /// <summary>
