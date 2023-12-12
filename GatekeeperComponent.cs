@@ -66,17 +66,22 @@ namespace Gatekeeper
         {
             var sources = Params.Input[1].Sources;
 
-            if (sources != null && sources.Count > 0)
+            if (sources?.Count > 0)
             {
                 var source = sources[0];
                 source.CollectData();
 
-                if (source.VolatileData.IsEmpty) return;
+                var volatileData = source.VolatileData;
 
-                var dataItem = source.VolatileData.get_Branch(0)[0];
+                if (!volatileData.IsEmpty && volatileData.get_Branch(0)?.Count > 0)
+                {
+                    var dataItem = volatileData.get_Branch(0)[0];
 
-                if (GH_Convert.ToBoolean(dataItem, out bool result, GH_Conversion.Both) && result)
-                    base.ExpireDownStreamObjects();
+                    if (GH_Convert.ToBoolean(dataItem, out bool result, GH_Conversion.Both) && result)
+                    {
+                        base.ExpireDownStreamObjects();
+                    }
+                }
             }
         }
 
