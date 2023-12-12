@@ -39,6 +39,8 @@ namespace Gatekeeper
         }
 
         private bool _shouldExpire = false;
+        private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo> ();
+        private bool _pass = false;
 
         /// <summary>
         /// This is the method that actually does the work.
@@ -49,26 +51,30 @@ namespace Gatekeeper
             bool compute = false;
             DA.GetData(1, ref compute);
 
+            DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
+
             if (_shouldExpire)
             {
                 _shouldExpire = false;
-
-                DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
-                DA.SetDataList(0, dataTree.AllData(true));
-
+                DA.SetDataTree(0, dataTree);
                 return;
             }
 
-                DA.SetDataTree(0, dataTree);
+            if (!_pass && compute)
+                _data = dataTree.ShallowDuplicate();
 
-                foreach (IGH_Param recipient in Params.Output[0].Recipients)
-                    recipient.ExpireSolution(recompute: true);
+            if (compute)
+            {
+                _shouldExpire = true;
+                DA.SetDataTree(0, new GH_Structure<IGH_Goo> { });
+                this.ExpireSolution(true);
             }
             else
             {
-                DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
-                DA.SetDataList(0, dataTree.AllData(true));
+                DA.SetDataTree(0, _data);
             }
+
+            _pass = compute;
         }
 
         protected override void ExpireDownStreamObjects()
