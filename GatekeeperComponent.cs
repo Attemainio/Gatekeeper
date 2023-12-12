@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
+using Rhino.Commands;
 
 namespace Gatekeeper
 {
@@ -70,9 +71,11 @@ namespace Gatekeeper
                 var source = sources[0];
                 source.CollectData();
 
-                IGH_Structure data = source.VolatileData;
+                if (source.VolatileData.IsEmpty) return;
 
-                if (!data.IsEmpty && ((GH_Boolean)data.get_Branch(0)[0]).Value)
+                var dataItem = source.VolatileData.get_Branch(0)[0];
+
+                if (GH_Convert.ToBoolean(dataItem, out bool result, GH_Conversion.Both) && result)
                     base.ExpireDownStreamObjects();
             }
         }
