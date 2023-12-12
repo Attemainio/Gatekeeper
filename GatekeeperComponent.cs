@@ -59,10 +59,10 @@ namespace Gatekeeper
                 return;
             }
 
-            if (compute)
-            {
-                _shouldExpire = true;
-                ExpireSolution(true);
+                DA.SetDataTree(0, dataTree);
+
+                foreach (IGH_Param recipient in Params.Output[0].Recipients)
+                    recipient.ExpireSolution(recompute: true);
             }
             else
             {
