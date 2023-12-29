@@ -36,7 +36,7 @@ namespace Gatekeeper
             CloseAndOutdated,
         }
 
-        public Phases Phase { get; set; } = Phases.CloseAndOutdated; 
+        public Phases Phase { get; set; } = Phases.CloseAndOutdated;
 
 
 
@@ -95,15 +95,16 @@ namespace Gatekeeper
             if (Params.Output.Count > 1)
                 DA.SetData(1, Compute);
 
-            DA.GetDataTree(0, out _data);
+            if (Compute)
+                DA.GetDataTree(0, out _data);
 
             DA.SetDataTree(0, _data);
 
-            
+
             if (Compute)
             {
                 lastRun = time;
-                Phase = Phases.Open;
+                Phase = GetFlattenedBooleans(1) ? Phases.Open : Phases.CloseAndUpdated;
             }
             else
             {
@@ -116,6 +117,8 @@ namespace Gatekeeper
                     Phase = Phases.CloseAndUpdated;
 
             }
+
+            SingleRunFromDoubleClick = false;
 
         }
 
@@ -135,7 +138,7 @@ namespace Gatekeeper
                 item.ExpireSolution(recompute: false);
             }
 
-            SingleRunFromDoubleClick = false;
+            
 
         }
 
@@ -231,6 +234,6 @@ namespace Gatekeeper
             get { return new Guid("F798609B-3A6A-4736-BD18-E59BF1F95D65"); }
         }
 
-        
+
     }
 }

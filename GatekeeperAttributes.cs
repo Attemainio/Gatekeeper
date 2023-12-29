@@ -123,16 +123,20 @@ namespace Gatekeeper
 
             string s = string.Empty;
 
+            var zoom = Grasshopper.Instances.ActiveCanvas.Viewport.Zoom;
+
+            string time = comp.LastRun == DateTime.MinValue || zoom < 1.5 ? "" : $"\nUpdated {(DateTime.Now - comp.LastRun).ToShortString()} ago";
+
             switch (comp.Phase)
             {
                 case Phases.Open:
                     s = "GATE: LIVE";
                     break;
                 case Phases.CloseAndUpdated:
-                    s = $"GATE: CACHED\nUpdated {(comp.LastRun-DateTime.Now).ToShortString()} ago";
+                    s = $"GATE: CACHED{time}";
                     break;
                 case Phases.CloseAndOutdated:
-                    s = $"GATE: OUTDATED\nUpdated {{(comp.LastRun-DateTime.Now).ToShortString()}} ago\"";
+                    s = $"GATE: OUTDATED{time}";
                     break;
             }
 
@@ -141,7 +145,7 @@ namespace Gatekeeper
             {
                 case GH_CanvasChannel.Wires:
 
-                    var zoom = Grasshopper.Instances.ActiveCanvas.Viewport.Zoom;
+                    
 
                     if (comp != null && zoom >= 1.0)
                     {
@@ -198,14 +202,14 @@ namespace Gatekeeper
             if (string.IsNullOrEmpty(s))
                 return;
 
-            const int MAXLEN = 25;
+            const int MAXLEN = 40;
             GH_Document doc = Owner.OnPingDocument();
 
             if (doc == null) return;
 
             RectangleF rectangle = Bounds;
             rectangle.Y += Bounds.Height + 2;
-            rectangle.Width += 60;
+            rectangle.Width += 160;
             if (s.Length > MAXLEN)
             {
                 s = s.Substring(0, MAXLEN - 1) + "...";
