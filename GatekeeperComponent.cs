@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Forms;
 using System.Xml.Linq;
+using GH_IO.Serialization;
 using Grasshopper.GUI;
 using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
@@ -23,10 +25,15 @@ namespace Gatekeeper
         /// </summary>
         public bool Compute { get; set; } = false;
 
+        // if it was already on
+        bool wasOn = false;
+
+        // set a toggle in the right click menu on the component to avoid recomputing if the gate is already open.
+        bool useStickyOn = false;
+
         DateTime IHasPhase.LastRun { get => lastRun; set => lastRun = value; }
         DateTime lastRun = DateTime.MinValue;
 
-        private bool wasComputing = true;
 
 
         public enum Phases
@@ -88,6 +95,7 @@ namespace Gatekeeper
         protected override void SolveInstance(IGH_DataAccess DA)
         {
             var time = DateTime.Now;
+            wasOn = Compute;
             Compute = GetFlattenedBooleans(1) || SingleRunFromDoubleClick;
 
             Message = "";
@@ -124,11 +132,10 @@ namespace Gatekeeper
 
         protected override void ExpireDownStreamObjects()
         {
-            if (GetFlattenedBooleans(1) || SingleRunFromDoubleClick) // tried looking at compute field, but somehow this needs to rerun, thus calling GetFlattenedBooleans again.
+            if (((!useStickyOn || !wasOn) && GetFlattenedBooleans(1)) || SingleRunFromDoubleClick) // tried looking at compute field, but somehow this needs to rerun, thus calling GetFlattenedBooleans again.
             {
                 Params.Output.First().ExpireSolution(recompute: false); // manual implementation of the base method. Just for our 1st output param.
-                //Phase = Phase == Phases.Open ? Phases.Open : Phases.CloseAndUpdated;
-                //wasComputing = true;
+
             }
 
 
@@ -138,8 +145,15 @@ namespace Gatekeeper
                 item.ExpireSolution(recompute: false);
             }
 
-            
 
+
+        }
+
+        protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
+        {
+            ToolStripMenuItem showRooms = Menu_AppendItem(menu, "Use Sticky On", (s, e) => { useStickyOn = !useStickyOn; }, true, useStickyOn);
+
+            base.AppendAdditionalComponentMenuItems(menu);
         }
 
 
@@ -205,6 +219,20 @@ namespace Gatekeeper
 
             return true;
 
+        }
+
+        public override bool Write(GH_IWriter writer)
+        {
+            writer.SetBoolean("useStickyOn", useStickyOn);
+            return base.Write(writer);
+        }
+
+        public override bool Read(GH_IReader reader)
+        {
+            if (reader.ItemExists("useStickyOn"))
+                useStickyOn = reader.GetBoolean("useStickyOn");
+
+            return base.Read(reader);
         }
 
         public GH_ObjectResponse OnDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
