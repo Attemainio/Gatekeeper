@@ -1,9 +1,7 @@
-using System;
-using System.Collections.Generic;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
-using Rhino.Commands;
+using System;
 
 namespace Gatekeeper
 {
@@ -40,7 +38,7 @@ namespace Gatekeeper
             pManager.AddGenericParameter("Data", "D", "Data", GH_ParamAccess.item);
         }
 
-        private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo> ();
+        private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo>();
         private bool _pass = false;
 
         /// <summary>
@@ -95,7 +93,7 @@ namespace Gatekeeper
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("F798609B-3A6A-4736-BD18-E59BF1F95D65"); }
+            get { return new Guid("BFC6B1C3-56E1-4AD8-B14D-48044403B52E"); }
         }
     }
 }
