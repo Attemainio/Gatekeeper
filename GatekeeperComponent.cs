@@ -1,5 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Forms;
+using System.Xml.Linq;
+using GH_IO.Serialization;
+using Grasshopper.GUI;
+using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
@@ -7,8 +13,42 @@ using Rhino.Commands;
 
 namespace Gatekeeper
 {
-    public class GH_GatekeeperComponent : GH_Component
+    public class GH_GatekeeperComponent : GH_Component, IHasDoubleClick, IHasPhase
     {
+
+        /// <summary>
+        /// used for the cached data. this is needed if we reconnect the output from this component to new parameters.
+        /// </summary>
+        private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo>();
+        /// <summary>
+        /// true if input parameters are all true.
+        /// </summary>
+        public bool Compute { get; set; } = false;
+
+        // if it was already on
+        bool wasOn = false;
+
+        // set a toggle in the right click menu on the component to avoid recomputing if the gate is already open.
+        bool useStickyOn = false;
+
+        DateTime IHasPhase.LastRun { get => lastRun; set => lastRun = value; }
+        DateTime lastRun = DateTime.MinValue;
+
+
+
+        public enum Phases
+        {
+            Open,
+            CloseAndUpdated,
+            CloseAndOutdated,
+        }
+
+        public Phases Phase { get; set; } = Phases.CloseAndOutdated;
+
+
+
+        private bool SingleRunFromDoubleClick = false;
+
         /// <summary>
         /// Initializes a new instance of the GH_DataDamComponent class.
         /// </summary>
@@ -18,9 +58,11 @@ namespace Gatekeeper
               "It acts as a conditional gate that can prevent data from propagating further in a Grasshopper definition based on a boolean condition, " +
               "without triggering a recomputation of the solution. " +
               "This component is particularly useful when you need to control the data flow based on specific conditions, " +
-              "and it ensures a seamless user experience by retaining the previous data state.",
+              "and it ensures a seamless user experience by retaining the previous data state.\n\n" +
+                "Double click for a single update",
               "Params", "Util")
         {
+
         }
 
         /// <summary>
@@ -29,7 +71,9 @@ namespace Gatekeeper
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddGenericParameter("Data", "D", "Data", GH_ParamAccess.tree);
-            pManager.AddBooleanParameter("Pass", "P", "True, if data is passed forward. Only one input here!", GH_ParamAccess.item, false);
+            pManager.AddBooleanParameter("Pass", "P", "If this list only contains positive inputs, the gate is open. You can right click and select Revese if you want to invert this (couldnt find how to look for the invert flag...)", GH_ParamAccess.tree, false);
+            pManager[0].Optional = true;
+            pManager[1].Optional = true;
         }
 
         /// <summary>
@@ -37,11 +81,12 @@ namespace Gatekeeper
         /// </summary>
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddGenericParameter("Data", "D", "Data", GH_ParamAccess.item);
+            pManager.AddGenericParameter("Data", "D", "Data", GH_ParamAccess.tree);
+            pManager.AddBooleanParameter("Running", "R", "True if it is updated. This is relevant if there's some previews etc later in your canvas that you want to turn on or off regardless of the frozen data", GH_ParamAccess.item);
         }
 
-        private GH_Structure<IGH_Goo> _data = new GH_Structure<IGH_Goo> ();
-        private bool _pass = false;
+
+
 
         /// <summary>
         /// This is the method that actually does the work.
@@ -49,40 +94,159 @@ namespace Gatekeeper
         /// <param name="DA">The DA object is used to retrieve from inputs and store in outputs.</param>
         protected override void SolveInstance(IGH_DataAccess DA)
         {
-            bool compute = false;
-            DA.GetData(1, ref compute);
+            var time = DateTime.Now;
+            wasOn = Compute;
+            Compute = GetFlattenedBooleans(1) || SingleRunFromDoubleClick;
 
-            DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
+            Message = "";
 
-            if (!_pass && compute)
-                _data = dataTree.ShallowDuplicate();
+            if (Params.Output.Count > 1)
+                DA.SetData(1, Compute);
 
-            DA.SetDataTree(0, compute ? dataTree : _data);
+            if (Compute)
+                DA.GetDataTree(0, out _data);
 
-            _pass = compute;
+            DA.SetDataTree(0, _data);
+
+
+            if (Compute)
+            {
+                lastRun = time;
+                Phase = GetFlattenedBooleans(1) ? Phases.Open : Phases.CloseAndUpdated;
+            }
+            else
+            {
+                // Pretty lame way of checking if its outdated. It checks if any of the inputs are changed while its in "false" mode.
+                // This can by mistake also be triggered if any of the RUN inputs are changed and not the data itself.
+                // Solving this is a hard nut to crack. But works as intended 99% of the cases. And 100% of cases if your trigger is ONE button/toggle.
+                if (Phase == Phases.CloseAndUpdated || Phase == Phases.CloseAndOutdated)
+                    Phase = Phases.CloseAndOutdated;
+                else
+                    Phase = Phases.CloseAndUpdated;
+
+            }
+
+            SingleRunFromDoubleClick = false;
+
         }
 
         protected override void ExpireDownStreamObjects()
         {
-            var sources = Params.Input[1].Sources;
-
-            if (sources?.Count > 0)
+            if (((!useStickyOn || !wasOn) && GetFlattenedBooleans(1)) || SingleRunFromDoubleClick) // tried looking at compute field, but somehow this needs to rerun, thus calling GetFlattenedBooleans again.
             {
-                var source = sources[0];
+                Params.Output.First().ExpireSolution(recompute: false); // manual implementation of the base method. Just for our 1st output param.
+
+            }
+
+
+            // only relevant if 2nd output exists. Which should still work in case you have the old component on your canvas with only 1 output.
+            foreach (IGH_Param item in Params.Output.Skip(1))
+            {
+                item.ExpireSolution(recompute: false);
+            }
+
+
+
+        }
+
+        protected override void AppendAdditionalComponentMenuItems(ToolStripDropDown menu)
+        {
+            ToolStripMenuItem showRooms = Menu_AppendItem(menu, "Use Sticky On", (s, e) => { useStickyOn = !useStickyOn; }, true, useStickyOn);
+
+            base.AppendAdditionalComponentMenuItems(menu);
+        }
+
+
+        /// <summary>
+        /// Checks all sources of the inputs of the index
+        /// </summary>
+        /// <returns></returns>
+        private bool GetFlattenedBooleans(int index)
+        {
+            IList<IGH_Param> sources = Params.Input[index].Sources;
+
+            if (sources == null || sources.Count == 0) return Params.Input[index].Reverse;
+
+            // added support for multiple sources input
+            foreach (var source in sources)
+            {
+
+                if (source == null) return false; // unsure if this is needed
+
                 source.CollectData();
 
-                var volatileData = source.VolatileData;
+                IGH_Structure volatileData = source.VolatileData;
 
-                if (!volatileData.IsEmpty && volatileData.get_Branch(0)?.Count > 0)
+                int pathCount = volatileData.PathCount;
+
+                for (int i = 0; i < pathCount; i++)
                 {
-                    var dataItem = volatileData.get_Branch(0)[0];
+                    System.Collections.IList branch = volatileData.get_Branch(i);
 
-                    if (GH_Convert.ToBoolean(dataItem, out bool result, GH_Conversion.Both) && result)
+                    foreach (var item in branch)
                     {
-                        base.ExpireDownStreamObjects();
+
+                        if (item == null) return false; // also unsure if needed
+
+                        // parsing numbers and strings and booleans
+                        switch (item)
+                        {
+                            case GH_Boolean b:
+                                if (b.Value == false) return false;
+                                break;
+                            case GH_String s:
+                                if (s.Value.ToLower() != "true" || s.Value != "1") return false;
+                                break;
+                            case GH_Number n:
+                                if (n.Value <= 0) return false;
+                                break;
+                            case GH_Integer g:
+                                if (g.Value <= 0) return false;
+                                break;
+
+                            default: return false;
+
+                        }
+
+                        //// May be better off with original solution, but slightly unsure how it handles nulls etc:
+                        //if (GH_Convert.ToBoolean(item, out bool result, GH_Conversion.Both) && result)
+                        //{
+                        //    return false;
+                        //}
                     }
                 }
             }
+
+            return true;
+
+        }
+
+        public override bool Write(GH_IWriter writer)
+        {
+            writer.SetBoolean("useStickyOn", useStickyOn);
+            return base.Write(writer);
+        }
+
+        public override bool Read(GH_IReader reader)
+        {
+            if (reader.ItemExists("useStickyOn"))
+                useStickyOn = reader.GetBoolean("useStickyOn");
+
+            return base.Read(reader);
+        }
+
+        public GH_ObjectResponse OnDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
+        {
+            SingleRunFromDoubleClick = true;
+            ExpireSolution(true);
+
+            return GH_ObjectResponse.Capture;
+        }
+
+        public override void CreateAttributes()
+        {
+            m_attributes = new GatekeeperAttributes(this);
+
         }
 
         /// <summary>
@@ -97,5 +261,7 @@ namespace Gatekeeper
         {
             get { return new Guid("F798609B-3A6A-4736-BD18-E59BF1F95D65"); }
         }
+
+
     }
 }
