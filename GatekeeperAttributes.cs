@@ -1,12 +1,9 @@
-﻿using Grasshopper.GUI.Canvas;
-using Grasshopper.GUI;
-using Grasshopper.Kernel.Attributes;
+﻿using Grasshopper.GUI;
+using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
-using Gatekeeper;
+using Grasshopper.Kernel.Attributes;
 using System.Drawing;
-using System.ComponentModel;
 using static Gatekeeper.GH_GatekeeperComponent;
-using System;
 
 
 namespace Gatekeeper
@@ -15,34 +12,22 @@ namespace Gatekeeper
     {
         readonly IGH_Component component;
 
+        public readonly static GH_PaletteStyle OpenSelectedStyle = new GH_PaletteStyle(Color.FromArgb(76, 148, 122));
+        public readonly static GH_PaletteStyle OpenUnselectedStyle = new GH_PaletteStyle(Color.FromArgb(95, 135, 113));
+        public readonly static GH_PaletteStyle ClosedUpdatedSelectedStyle = new GH_PaletteStyle(Color.FromArgb(65, 74, 75));
+        public readonly static GH_PaletteStyle ClosedUpdatedUnselectedStyle = new GH_PaletteStyle(Color.FromArgb(93, 98, 91));
+        public readonly static GH_PaletteStyle ClosedOutdatedSelectedStyle = new GH_PaletteStyle(Color.FromArgb(94, 36, 36));
+        public readonly static GH_PaletteStyle ClosedOutdatedUnselectedStyle = new GH_PaletteStyle(Color.FromArgb(138, 70, 70));
 
         public GH_PaletteStyle palette_normal_standard;
         public GH_PaletteStyle palette_normal_selected;
         public GH_PaletteStyle palette_hidden_standard;
         public GH_PaletteStyle palette_hidden_selected;
 
-
-
-        private Font font;
-
-
+        string message = string.Empty;
 
         public GH_PaletteStyle GetStyle(Phases phase)
         {
-
-            GH_PaletteStyle OpenSelectedStyle = new GH_PaletteStyle(Color.FromArgb(76, 148, 122)); // (76, 128, 122));
-            GH_PaletteStyle OpenUnselectedStyle = new GH_PaletteStyle(Color.FromArgb(95, 135, 113));
-
-            // GATE CLOSED AND UPDATE
-            GH_PaletteStyle ClosedUpdatedSelectedStyle = new GH_PaletteStyle(Color.FromArgb(65, 74, 75));  // (135, 134, 115));
-            GH_PaletteStyle ClosedUpdatedUnselectedStyle = new GH_PaletteStyle(Color.FromArgb(93, 98, 91));
-
-            // GATECLOSEDOUTDATED
-            GH_PaletteStyle ClosedOutdatedSelectedStyle = new GH_PaletteStyle(Color.FromArgb(94, 36, 36));
-            GH_PaletteStyle ClosedOutdatedUnselectedStyle = new GH_PaletteStyle(Color.FromArgb(138, 70, 70));
-
-
-
             if (Selected)
             {
                 switch (phase)
@@ -73,26 +58,14 @@ namespace Gatekeeper
             }
         }
 
-
-
         public GatekeeperAttributes(IGH_Component component)
           : base(component)
         {
             this.component = component;
-
-            FontFamily fontFamily = new FontFamily("Arial");
-            font = new Font(
-                 fontFamily,
-                   8,
-                 FontStyle.Bold,
-                 GraphicsUnit.Pixel);
         }
-
-
 
         public override GH_ObjectResponse RespondToMouseDoubleClick(GH_Canvas sender, GH_CanvasMouseEvent e)
         {
-
             if (component is IHasDoubleClick clickComponent)
             {
                 clickComponent.OnDoubleClick(sender, e);
@@ -100,9 +73,7 @@ namespace Gatekeeper
             }
 
             return base.RespondToMouseDoubleClick(sender, e);
-
         }
-
 
         /// <summary>
         /// Renders the running components in another color
@@ -120,23 +91,16 @@ namespace Gatekeeper
                 return;
             }
 
-
-            string s = string.Empty;
-
-            var zoom = Grasshopper.Instances.ActiveCanvas.Viewport.Zoom;
-
-            string time = comp.LastRun == DateTime.MinValue || zoom < 1.5 ? "" : $"\nUpdated {(DateTime.Now - comp.LastRun).ToShortString()} ago";
-
             switch (comp.Phase)
             {
                 case Phases.Open:
-                    s = "GATE: LIVE";
+                    message = "LIVE";
                     break;
                 case Phases.CloseAndUpdated:
-                    s = $"GATE: CACHED{time}";
+                    message = $"CACHED";
                     break;
                 case Phases.CloseAndOutdated:
-                    s = $"GATE: OUTDATED{time}";
+                    message = $"OUTDATED";
                     break;
             }
 
@@ -145,22 +109,13 @@ namespace Gatekeeper
             {
                 case GH_CanvasChannel.Wires:
 
-                    
-
-                    if (comp != null && zoom >= 1.0)
-                    {
-                        RenderText(
-                            s: s,
-                            style: GetStyle(comp.Phase),
-                            graphics: graphics);
-                    }
                     base.Render(canvas, graphics, channel);
                     break;
-
 
                 case GH_CanvasChannel.Objects:
 
                     // Save original
+
                     palette_normal_standard = GH_Skin.palette_normal_standard;
                     palette_hidden_standard = GH_Skin.palette_hidden_standard;
                     palette_normal_selected = GH_Skin.palette_normal_selected;
@@ -174,6 +129,7 @@ namespace Gatekeeper
                     base.Render(canvas, graphics, channel);
 
                     // Put the original style back.
+
                     GH_Skin.palette_normal_standard = palette_normal_standard;
                     GH_Skin.palette_normal_selected = palette_normal_selected;
                     GH_Skin.palette_hidden_standard = palette_hidden_standard;
@@ -184,43 +140,7 @@ namespace Gatekeeper
                 default:
                     base.Render(canvas, graphics, channel);
                     break;
-
-
             }
-
         }
-
-
-        /// <summary>
-        /// Inspired from TUNNY plugin
-        /// </summary>
-        /// <param name="graphics"></param>
-        /// <param name="s">text to display</param>
-        /// <param name="style">style/color</param>
-        private void RenderText(string s, GH_PaletteStyle style, Graphics graphics)
-        {
-            if (string.IsNullOrEmpty(s))
-                return;
-
-            const int MAXLEN = 40;
-            GH_Document doc = Owner.OnPingDocument();
-
-            if (doc == null) return;
-
-            RectangleF rectangle = Bounds;
-            rectangle.Y += Bounds.Height + 2;
-            rectangle.Width += 160;
-            if (s.Length > MAXLEN)
-            {
-                s = s.Substring(0, MAXLEN - 1) + "...";
-            }
-
-            //rectangle.Inflate(6, 6);
-            graphics.DrawString(s, font, new SolidBrush(style.Fill), rectangle);
-            //graphics.FillRectangle(fill, rectangle);
-            //graphics.DrawRectangle(edge, rectangle);
-        }
-
-
     }
 }

@@ -1,10 +1,5 @@
-﻿using Grasshopper.GUI.Canvas;
-using Grasshopper.GUI;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Grasshopper.GUI;
+using Grasshopper.GUI.Canvas;
 
 namespace Gatekeeper
 {
