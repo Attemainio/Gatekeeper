@@ -7,9 +7,9 @@ The Gatekeeper component is a powerful tool designed to manage the flow of data 
 
 ### 1.0.7
 
-Gatekeeper icon turns green if the data is passed
-Gatekeeper now informs the last calculation time
-Double-click of the component updates the output, even if the pass is false
+Gatekeeper icon turns green if the data is passed.
+Gatekeeper now informs the last calculation time.
+Double-click of the component updates the output, even if the pass is false.
 
 ## Features
 
