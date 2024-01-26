@@ -63,9 +63,19 @@ namespace Gatekeeper.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
         /// </summary>
-        internal static System.Drawing.Icon GH_Gatekeeper {
+        internal static System.Drawing.Icon GH_Gatekeeper_Green {
             get {
-                object obj = ResourceManager.GetObject("GH_Gatekeeper", resourceCulture);
+                object obj = ResourceManager.GetObject("GH_Gatekeeper_Green", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Icon similar to (Icon).
+        /// </summary>
+        internal static System.Drawing.Icon GH_Gatekeeper_Red {
+            get {
+                object obj = ResourceManager.GetObject("GH_Gatekeeper_Red", resourceCulture);
                 return ((System.Drawing.Icon)(obj));
             }
         }

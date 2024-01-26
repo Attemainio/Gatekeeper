@@ -12,7 +12,7 @@ namespace Gatekeeper
         public override Bitmap Icon => null;
 
         //Return a short string describing the purpose of this GHA library.
-        public override string Description => "This single component stops the data from passing forward";
+        public override string Description => "Acts as a gate to prevent data from passing forward";
 
         public override Guid Id => new Guid("1212c74b-9967-4d3b-92b7-48896b76b6e0");
 
