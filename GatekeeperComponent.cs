@@ -29,7 +29,8 @@ namespace Gatekeeper
               "It acts as a conditional gate that can prevent data from propagating further in a Grasshopper definition based on a boolean condition, " +
               "without triggering a recomputation of the solution. " +
               "This component is particularly useful when you need to control the data flow based on specific conditions, " +
-              "and it ensures a seamless user experience by retaining the previous data state.",
+              "and it ensures a seamless user experience by retaining the previous data state.\n\n" +
+              "Double-click for a single update",
               "Params", "Util")
         {
         }
@@ -174,7 +175,7 @@ namespace Gatekeeper
         /// </summary>
         public override Guid ComponentGuid
         {
-            get { return new Guid("BFC6B1C3-56E1-4AD8-B14D-48044403B52E"); }
+            get { return new Guid("F798609B-3A6A-4736-BD18-E59AF1F95D65"); }
         }
     }
 }
