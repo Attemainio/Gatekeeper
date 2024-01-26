@@ -1,9 +1,11 @@
+using GH_IO.Serialization;
+using Grasshopper.GUI;
+using Grasshopper.GUI.Canvas;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Data;
 using Grasshopper.Kernel.Types;
 using System;
 using System.Drawing;
-using System.Linq;
 using System.Windows.Forms;
 
 namespace Gatekeeper
@@ -98,7 +100,7 @@ namespace Gatekeeper
             if (compute)
             {
                 DateTime time = DateTime.Now;
-                this.Message = $"Last update: {time.ToString("HH:mm:ss")}";
+                this.Message = $"Last update: {time:HH:mm:ss}";
             }
 
             DA.GetDataTree(0, out GH_Structure<IGH_Goo> dataTree);
